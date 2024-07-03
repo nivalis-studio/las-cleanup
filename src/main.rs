@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use las::{Read, Reader, Write, Writer};
+use las::{Builder, Read, Reader, Write, Writer};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -16,24 +16,18 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let mut reader = Reader::from_path(args.path).context("Failed to open las file")?;
-    let header = reader.header().clone();
-    let bounds = header.bounds();
+
+    let original_header = reader.header().clone();
+
+    let mut header = Builder::from(original_header).into_header()?;
+
     let mut las_points: Vec<las::Point> = Vec::new();
 
     for point in reader.points() {
         match point {
             Ok(point) => {
-                if point.x > bounds.max.x
-                    || point.y > bounds.max.y
-                    || point.z > bounds.max.z
-                    || point.x < bounds.min.x
-                    || point.y < bounds.min.y
-                    || point.z < bounds.min.z
-                {
-                    continue;
-                }
-
-                las_points.push(point)
+                header.add_point(&point);
+                las_points.push(point);
             }
             Err(_) => {
                 continue;
