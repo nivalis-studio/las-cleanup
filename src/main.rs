@@ -22,6 +22,7 @@ fn main() -> Result<()> {
     let mut header = Builder::from(original_header).into_header()?;
 
     let mut las_points: Vec<las::Point> = Vec::new();
+    let mut dropped: u64 = 0;
 
     for point in reader.points() {
         match point {
@@ -30,10 +31,13 @@ fn main() -> Result<()> {
                 las_points.push(point);
             }
             Err(_) => {
+                dropped += 1;
                 continue;
             }
         }
     }
+
+    let kept = las_points.len();
 
     let mut writer = Writer::from_path(args.output, header).context("Failed to get las writer")?;
 
@@ -42,6 +46,8 @@ fn main() -> Result<()> {
     }
 
     writer.close().context("Failed to close las writer")?;
+
+    eprintln!("Wrote {kept} points, dropped {dropped} invalid points");
 
     Ok(())
 }
